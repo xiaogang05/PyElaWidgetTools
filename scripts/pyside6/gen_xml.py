@@ -292,11 +292,13 @@ with open("wrapper.hpp", "w", encoding="utf8") as ff:
 sysinclude = ""
 if "msvc2019" in MY_QT_INSTALL:
     # <=6.7必须使用msvc2019的头文件
-    vspath = "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC"
-    if not os.path.exists(vspath):
-        vspath = (
-            "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC"
-        )
+    # 获取 Visual Studio 安装目录
+    vs_install_dir = os.environ.get('VSINSTALLDIR')
+    if not vs_install_dir:
+        raise Exception("VSINSTALLDIR environment variable not set, cannot locate MSVC tools.")
+    
+    # 将反斜杠转为正斜杠（兼容路径拼接）
+    vspath = os.path.join(vs_install_dir, 'VC', 'Tools', 'MSVC').replace('\\', '/')
     print(os.listdir(vspath))
     for _ in os.listdir(vspath):
         if _.startswith("14.29"):
