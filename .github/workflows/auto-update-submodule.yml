@@ -1,0 +1,40 @@
+name: 自动更新子模块
+
+on:
+  schedule:
+    # 定时运行：每周一 9:00 (UTC时间) 检查一次
+    - cron: '0 9 * * 1'
+  # 允许手动触发
+  workflow_dispatch:
+
+jobs:
+  update-submodule:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 检出代码（包含子模块）
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. 更新子模块到其跟踪分支的最新提交
+      - name: 更新子模块
+        run: |
+          # 进入子模块目录，拉取最新代码（默认跟踪 main 分支）
+          git submodule update --remote ./ElaWidgetTools
+
+      # 3. 检查是否有变更，如有则提交并创建PR
+      - name: 创建 Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: 自动更新 ElaWidgetTools 子模块"
+          title: "自动更新子模块 ElaWidgetTools"
+          body: |
+            此 PR 由自动化工作流生成，用于将子模块 `ElaWidgetTools` 更新到最新版本。
+
+            请检查变更是否兼容，然后合并此 PR。
+          branch: "auto-update-submodule"
+          base: "main"  # 根据你的主分支名称调整，可能是 main 或 master
+          delete-branch: true
