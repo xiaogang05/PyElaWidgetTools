@@ -2,48 +2,45 @@ name: 自动更新子模块
 
 on:
   schedule:
-    - cron: '0 9 * * 1'  # 每周一 9:00
-  workflow_dispatch:      # 手动触发
+    - cron: '0 9 * * 1'   # 每周一 9:00
+  workflow_dispatch:       # 手动触发
 
 jobs:
   update-submodule:
     runs-on: ubuntu-latest
+    # ---------- 关键：显式声明权限 ----------
+    permissions:
+      contents: write      # 允许推送分支
+      pull-requests: write # 允许创建 PR
+
     steps:
-      # 1. 检出主仓库代码（含子模块）
+      # 1. 检出主仓库（包含子模块）
       - name: 检出代码
-        uses: actions/checkout@v6   # 升级到 v6，消除 Node 警告
+        uses: actions/checkout@v6
         with:
-          submodules: true          # 先拉取当前锁定的版本
+          submodules: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. 修复协议并强制拉取最新代码（核心修复）
+      # 2. 更新子模块到最新（使用 HTTPS 协议绕过 SSH）
       - name: 更新子模块到最新
         run: |
-          # 关键修复：将 SSH 协议全局替换为 HTTPS，解决 runner 无 SSH 密钥的问题
+          # 强制使用 HTTPS 代替 SSH（子模块公开，不需要 SSH）
           git config --global url."https://github.com/".insteadOf "git@github.com:"
           
-          # 进入子模块目录
           cd ./ElaWidgetTools
-          
-          # 获取远程最新信息
           git fetch origin
-          
-          # 智能切换到远程的默认分支（自动适配 main 或 master）
+          # 自动探测子模块的默认分支（main 或 master）
           DEFAULT_BRANCH=$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5)
           git checkout $DEFAULT_BRANCH
-          
-          # 拉取最新代码
           git pull origin $DEFAULT_BRANCH
-          
-          # 返回主仓库根目录
           cd ..
           
-          # 将更新后的子模块指针添加到暂存区
+          # 将新的子模块指针加入暂存区
           git add ./ElaWidgetTools
 
-      # 3. 创建 Pull Request（升级到 v8）
+      # 3. 创建 Pull Request（基于更新后的子模块指针）
       - name: 创建 Pull Request
-        uses: peter-evans/create-pull-request@v8   # 升级到 v8，消除 Node 警告
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "chore: 自动更新 ElaWidgetTools 子模块"
@@ -53,5 +50,5 @@ jobs:
             
             ✅ 已自动适配主分支 (main/master)
           branch: "auto-update-submodule"
-          base: "main"          # 如果主分支是 master，请改为 master
+          base: "main"          # 若你的主分支是 master，改成 master
           delete-branch: true
